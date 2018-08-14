@@ -1,0 +1,79 @@
+
+//for joe
+
+#CATEGORY "46" "File Finder" // Custom
+              
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+
+DIGITAL_INPUT searchNow;
+BUFFER_INPUT _SKIP_, fromConsole[1000];
+                               
+DIGITAL_OUTPUT fileFound;
+STRING_OUTPUT _SKIP_, toConsole, Notice;
+
+ 
+STRING_PARAMETER _SKIP_, _SKIP_, _SKIP_, _SKIP_, _SKIP_, fileName[100];
+
+#BEGIN_PARAMETER_PROPERTIES fileName
+   propValidUnits = unitString;
+   propDefaultUnit = unitString; 
+   propShortDescription = "file_to_find";
+#END_PARAMETER_PROPERTIES
+
+SIGNED_INTEGER nFileHandle;      
+STRING searchCMD[4][30], response[1000];
+
+PUSH searchNow
+{
+	toConsole = searchCMD[1];	
+	fileFound = 0;
+}
+ 
+THREADSAFE CHANGE fromConsole
+{
+	STRING toBeWritten[1005];
+	STRING fileContents[500];
+
+	response = GATHER("MC3>", fromConsole);
+	//print("%s",response);
+	
+	if(find(fileName,response))
+	{
+		fileFound = 1;
+		Notice = "File with name " + fileName + " was found in \\sys\\PLog\\ directory.";
+ 
+		StartFileOperations();
+	    nFileHandle = FileOpen ("\\NVRAM\\whowasit.txt", _O_RDWR | _O_TEXT);
+	
+		if(nFileHandle>=0)
+   		{
+			FileRead(nFileHandle, fileContents, 500);
+			if(Find("@@@", fileContents))
+			{
+				//do nothing
+			}else{
+				toConsole = searchCMD[2];
+				response = GATHER("MC3>", fromConsole);
+				toBeWritten = "@@@"+response;
+				FileWrite(nfileHandle, toBeWritten, len(response)+3);
+			}
+		}
+		FileClose(nfileHandle);
+		EndFileOperations();
+	}
+}
+
+Function Main()
+{
+
+	StartFileOperations();
+	FileDelete("\\NVRAM\\whowasit.txt");
+    EndFileOperations();
+
+	searchCMD[1] = "dir \\sys\\PLog\\ \x0D\x0A";
+	searchCMD[2] = "who \x0D\x0A";
+	searchCMD[3] = "";
+	searchCMD[4] = "";	    
+}
